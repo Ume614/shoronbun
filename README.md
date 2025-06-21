@@ -1,54 +1,147 @@
-# React + TypeScript + Vite
+# 総合選抜型入試 小論文対策アプリ
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+大学の総合選抜型入試（AO入試）向けの小論文練習アプリケーションです。過去問題データから次年度のテーマを予想し、本番さながらの環境で小論文練習ができます。
 
-Currently, two official plugins are available:
+## 🌟 主要機能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 📚 大学・学部検索
+- 大学名での検索機能
+- AO入試対応学部・学科のフィルタリング
+- 過去問題データの表示
 
-## Expanding the ESLint configuration
+### 🎯 問題予想・出題
+- 過去5年間のデータに基づく次年度テーマ予想
+- 現代的なトレンドキーワードを組み込んだ問題生成
+- 学部・学科に特化したコンテキスト反映
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### ⏱️ 本番形式での練習
+- リアルタイムタイマー機能
+- 制限時間での自動提出
+- 文字数カウント機能
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+### 🤖 AI採点システム
+- **構成** (25点): 序論・本論・結論の構成評価
+- **内容** (30点): 具体例・データ活用・多角的視点
+- **論理性** (25点): 論理的接続・一貫性
+- **表現** (20点): 文体・語彙・読みやすさ
+- 総合100点満点での詳細フィードバック
+
+### 📖 書き方ガイド
+- **構成**: 小論文の基本構成・論理的文章構成
+- **内容**: 説得力のある論拠・データ活用法
+- **表現**: 適切な文体・効果的な表現技法
+- **例文**: 高評価を得る小論文の実例
+
+## 🚀 技術スタック
+
+- **フロントエンド**: React 18 + TypeScript
+- **ビルドツール**: Vite
+- **スタイリング**: カスタムCSS（CSS Variables使用）
+- **デザイン**: sense.com風のクリーンなUI/UX
+
+## 🏗️ プロジェクト構造
+
+```
+src/
+├── components/           # Reactコンポーネント
+│   ├── Layout.tsx       # 基本レイアウト
+│   ├── UniversitySearch.tsx  # 大学検索
+│   ├── EssayEditor.tsx  # 小論文エディター
+│   ├── ScoreResult.tsx  # 採点結果表示
+│   └── WritingGuideModal.tsx # 書き方ガイド
+├── data/                # 静的データ
+│   ├── universities.ts  # 大学・学部データ
+│   └── writingGuides.ts # 書き方ガイドデータ
+├── utils/               # ユーティリティ関数
+│   ├── questionPredictor.ts # 問題予想ロジック
+│   └── essayScorer.ts   # 採点システム
+├── types/               # TypeScript型定義
+│   └── index.ts
+└── index.css           # グローバルスタイル
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 📦 セットアップ
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 前提条件
+- Node.js 18以上
+- npm または yarn
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+### インストール
+
+```bash
+# リポジトリのクローン
+git clone https://github.com/Ume614/shoronbun.git
+cd shoronbun
+
+# 依存関係のインストール
+npm install
+
+# 開発サーバーの起動
+npm run dev
 ```
+
+アプリケーションは `http://localhost:5173` で起動します。
+
+### その他のコマンド
+
+```bash
+# 本番ビルド
+npm run build
+
+# プレビュー
+npm run preview
+
+# リント
+npm run lint
+```
+
+## 💡 使い方
+
+1. **大学検索**: トップページで大学名を入力して検索
+2. **学部・学科選択**: AO入試対応の学部・学科を選択
+3. **問題確認**: 生成された予想問題を確認
+4. **練習開始**: タイマーを開始して小論文を作成
+5. **採点結果**: 提出後、詳細な採点結果とアドバイスを確認
+
+## 🎨 デザインシステム
+
+sense.com風のクリーンで洗練されたデザインを採用：
+- **カラーパレット**: 落ち着いたグレートーンをベースに、アクセントカラーとして紫系を使用
+- **タイポグラフィ**: 読みやすいシステムフォント
+- **レイアウト**: カード型レイアウトとグリッドシステム
+- **インタラクション**: 滑らかなトランジションとホバーエフェクト
+
+## 📊 対応大学データ
+
+現在、以下の大学の過去問題データを収録：
+- 早稲田大学（政治経済学部、法学部）
+- 慶應義塾大学（経済学部）
+- 東京大学（教養学部）
+
+※ データは継続的に拡充予定
+
+## 🔮 今後の機能追加予定
+
+- [ ] より多くの大学データの追加
+- [ ] 過去の練習履歴・成績管理
+- [ ] ユーザーアカウント機能
+- [ ] より高度なAI採点アルゴリズム
+- [ ] 音声入力機能
+- [ ] モバイルアプリ対応
+
+## 🤝 貢献
+
+プルリクエストや課題報告を歓迎します。
+
+## 📄 ライセンス
+
+MIT License
+
+## 📞 お問い合わせ
+
+ご質問や提案がございましたら、GitHubのIssueからお気軽にお知らせください。
+
+---
+
+**開発者**: Ume614  
+**リポジトリ**: https://github.com/Ume614/shoronbun
