@@ -1,6 +1,12 @@
 import streamlit as st
 import time
+import sys
+import os
 from datetime import datetime
+
+# パスを追加
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from data.universities import get_universities
 from data.writing_guides import get_writing_guides
 from utils.question_predictor import generate_predicted_question
@@ -135,7 +141,14 @@ def show_university_selection():
     """大学選択画面"""
     st.header("🎯 大学・学部・学科を選択してください")
     
-    universities = get_universities()
+    try:
+        universities = get_universities()
+        st.write(f"デバッグ: {len(universities)}の大学データを読み込みました")
+        for uni in universities:
+            st.write(f"- {uni.name}")
+    except Exception as e:
+        st.error(f"大学データの読み込みエラー: {e}")
+        return
     
     # 大学検索
     search_term = st.text_input("🔍 大学名で検索", placeholder="例: 早稲田")
