@@ -253,6 +253,10 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
     try:
         client = get_claude_client()
         
+        # デバッグ情報
+        st.write(f"🔍 デバッグ: 評価対象文字数 {len(content)}文字")
+        st.write(f"🔍 デバッグ: {university}{faculty}の評価基準で採点")
+        
         prompt = f"""あなたは{university}{faculty}の厳格な入試評価委員です。以下の小論文を大学入試レベルの厳しい基準で詳細評価してください。
 
 【出題テーマ】
@@ -658,18 +662,61 @@ def main():
         st.markdown("### 📝 出題テーマ")
         st.info(st.session_state.current_question)
         
-        # 評価実行
+        # 評価実行（デバッグ情報付き）
         if st.session_state.essay_result is None:
-            with st.spinner("Claude AIが厳格に評価中..."):
-                result = api_score_essay(
-                    st.session_state.essay_content,
-                    st.session_state.current_question,
-                    st.session_state.selected_university.name,
-                    st.session_state.selected_faculty.name
-                )
-                st.session_state.essay_result = result
+            st.info("🔄 新しい評価を実行中...")
+            evaluation_time = datetime.now().strftime("%H:%M:%S")
+            
+            with st.spinner("🤖 Claude AIが厳格に評価中..."):
+                try:
+                    # Claude API呼び出し確認
+                    get_claude_client()
+                    st.info("✅ Claude API接続確認済み")
+                    
+                    result = api_score_essay(
+                        st.session_state.essay_content,
+                        st.session_state.current_question,
+                        st.session_state.selected_university.name,
+                        st.session_state.selected_faculty.name
+                    )
+                    
+                    # 評価時刻を記録
+                    result["評価時刻"] = evaluation_time
+                    result["文字数"] = len(st.session_state.essay_content)
+                    result["AI使用"] = "Claude-3-Haiku"
+                    
+                    st.session_state.essay_result = result
+                    st.success(f"✅ 評価完了（{evaluation_time}）")
+                    
+                except Exception as e:
+                    st.error(f"❌ Claude API エラー: {str(e)}")
+                    st.warning("🔄 フォールバック評価を使用します")
+                    
+                    result = fallback_score_essay(
+                        st.session_state.essay_content,
+                        st.session_state.current_question,
+                        st.session_state.selected_university.name,
+                        st.session_state.selected_faculty.name
+                    )
+                    result["評価時刻"] = evaluation_time
+                    result["文字数"] = len(st.session_state.essay_content)
+                    result["AI使用"] = "フォールバック"
+                    
+                    st.session_state.essay_result = result
         
         result = st.session_state.essay_result
+        
+        # 評価情報表示
+        st.markdown("### 📊 評価情報")
+        eval_col1, eval_col2, eval_col3 = st.columns(3)
+        with eval_col1:
+            st.metric("評価時刻", result.get("評価時刻", "不明"))
+        with eval_col2:
+            st.metric("文字数", f"{result.get('文字数', 0)}文字")
+        with eval_col3:
+            ai_used = result.get("AI使用", "不明")
+            color = "🤖" if "Claude" in ai_used else "⚠️"
+            st.metric("AI評価", f"{color} {ai_used}")
         
         # 総合評価
         st.markdown("### 🎯 総合評価")
@@ -754,9 +801,16 @@ def main():
         
         with col1:
             if st.button("🔄 修正して再評価", type="primary", disabled=char_count_modified < 100):
+                # 強制的にセッション状態をクリア
                 st.session_state.essay_content = modified_essay
-                st.session_state.essay_result = None  # 評価結果をリセット
-                st.success("✅ 文章を更新しました。新しい評価を開始します...")
+                st.session_state.essay_result = None
+                
+                # キーを削除して確実にリセット
+                if 'essay_result' in st.session_state:
+                    del st.session_state['essay_result']
+                
+                st.success("✅ 文章を更新しました。新しいClaude評価を開始します...")
+                time.sleep(1)  # 少し待機
                 st.rerun()
         
         with col2:
