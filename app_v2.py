@@ -253,15 +253,10 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
     try:
         client = get_claude_client()
         
-        # デバッグ情報（文章のハッシュ値も表示）
+        # 評価用の一意性確保
         import hashlib
         content_hash = hashlib.md5(content.encode()).hexdigest()[:8]
         current_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        
-        st.write(f"🔍 デバッグ: 評価対象文字数 {len(content)}文字")
-        st.write(f"🔍 デバッグ: 文章ハッシュ {content_hash}")
-        st.write(f"🔍 デバッグ: {university}{faculty}の評価基準で採点")
-        st.write(f"🔍 デバッグ: API呼び出し時刻 {current_time}")
         
         # プロンプトに一意性を追加（キャッシュ回避）
         import random
@@ -331,15 +326,7 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
             messages=[{"role": "user", "content": prompt}]
         )
         
-        st.write(f"🔍 デバッグ: Temperature={temperature:.2f}, RandomSeed={random_seed}")
-        
         response_text = message.content[0].text.strip()
-        
-        # デバッグ: Claudeのレスポンスを表示
-        st.write(f"🔍 デバッグ: Claude応答長 {len(response_text)}文字")
-        
-        with st.expander("🔍 Claude生レスポンス確認"):
-            st.text(response_text[:1000] + "..." if len(response_text) > 1000 else response_text)
         
         # JSON部分を抽出
         json_start = response_text.find('{')
@@ -347,15 +334,7 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
         
         if json_start != -1 and json_end != -1:
             json_text = response_text[json_start:json_end]
-            
-            # JSONパース前にも確認
-            st.write(f"🔍 デバッグ: JSON抽出成功 {len(json_text)}文字")
-            
             parsed_result = json.loads(json_text)
-            
-            # パース結果の確認
-            st.write(f"🔍 デバッグ: JSON解析成功 総合得点={parsed_result.get('総合得点', 'なし')}")
-            
             return parsed_result
         else:
             raise ValueError("JSON形式の応答が見つかりません")
@@ -508,7 +487,7 @@ def show_writing_guide():
 
 # メイン関数
 def main():
-    st.title("🤖 Claude API搭載 総合選抜型入試 小論文対策アプリ（2026年度入試対応）v2.0")
+    st.title("🤖 Claude API搭載 総合選抜型入試 小論文対策アプリ（2026年度入試対応）")
     st.markdown("---")
     
     # 初期化
@@ -617,7 +596,7 @@ def main():
             st.success(f"🎯 {st.session_state.selected_university.name} {st.session_state.selected_faculty.name} {st.session_state.selected_department.name}")
         
         # 問題表示（常に表示）
-        st.markdown("### 📝 出題テーマ（フロー改善版v2.0）")
+        st.markdown("### 📝 出題テーマ")
         if st.session_state.current_question:
             st.info(st.session_state.current_question)
         else:
@@ -709,16 +688,12 @@ def main():
         st.markdown("### 📝 出題テーマ")
         st.info(st.session_state.current_question)
         
-        # 評価実行（デバッグ情報付き）
+        # 評価実行
         if st.session_state.essay_result is None:
-            st.info("🔄 新しい評価を実行中...")
             evaluation_time = datetime.now().strftime("%H:%M:%S")
             
             with st.spinner("🤖 Claude AIが厳格に評価中..."):
                 try:
-                    # Claude API呼び出し確認
-                    get_claude_client()
-                    st.info("✅ Claude API接続確認済み")
                     
                     result = api_score_essay(
                         st.session_state.essay_content,
@@ -735,7 +710,6 @@ def main():
                     result["評価内容"] = f"新規評価 - 文字数{len(st.session_state.essay_content)}"
                     
                     st.session_state.essay_result = result
-                    st.success(f"✅ 評価完了（{evaluation_time}）")
                     
                 except Exception as e:
                     st.error(f"❌ Claude API エラー: {str(e)}")
@@ -835,12 +809,6 @@ def main():
         # 現在の解答を表示
         st.markdown("#### 📄 現在の解答内容")
         
-        # デバッグ: 現在のセッション状態を表示
-        import hashlib
-        current_hash = hashlib.md5(st.session_state.essay_content.encode()).hexdigest()[:8]
-        st.write(f"🔍 デバッグ: セッション内容ハッシュ {current_hash}")
-        st.write(f"🔍 デバッグ: セッション文字数 {len(st.session_state.essay_content)}文字")
-        
         # 現在の文章を読み取り専用で表示
         st.text_area(
             "現在の解答（読み取り専用）",
@@ -869,14 +837,12 @@ def main():
         st.session_state.new_essay_content = new_essay
         
         char_count_new = len(new_essay)
-        new_hash = hashlib.md5(new_essay.encode()).hexdigest()[:8]
         st.write(f"文字数: {char_count_new}文字")
-        st.write(f"🔍 デバッグ: 新文章ハッシュ {new_hash}")
         
         # 変更検出
         has_changed = new_essay != st.session_state.essay_content
         if has_changed:
-            st.info(f"🔄 文章が変更されています（{current_hash} → {new_hash}）")
+            st.info("🔄 文章が変更されています")
         else:
             st.warning("⚠️ 文章に変更がありません")
         
@@ -885,11 +851,6 @@ def main():
         
         with col1:
             if st.button("🔄 修正版で再評価", type="primary", disabled=char_count_new < 100 or not has_changed):
-                # デバッグ情報表示
-                st.write(f"🔍 元文章ハッシュ: {current_hash}")
-                st.write(f"🔍 新文章ハッシュ: {new_hash}")
-                st.write(f"🔍 変更検出: {has_changed}")
-                
                 # セッション状態を確実に更新
                 st.session_state.essay_content = new_essay
                 st.session_state.essay_result = None
@@ -898,11 +859,6 @@ def main():
                 for key in ['essay_result']:
                     if key in st.session_state:
                         del st.session_state[key]
-                
-                # 変更確認
-                updated_hash = hashlib.md5(st.session_state.essay_content.encode()).hexdigest()[:8]
-                st.write(f"🔍 更新後セッションハッシュ: {updated_hash}")
-                st.write(f"🔍 ハッシュ更新成功: {updated_hash == new_hash}")
                 
                 st.success("✅ 新しい文章で評価を開始します...")
                 time.sleep(1)
