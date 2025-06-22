@@ -810,31 +810,70 @@ def main():
         
         # 現在の解答を表示・編集可能
         st.markdown("#### 📄 現在の解答内容")
+        
+        # デバッグ: 現在のセッション状態を表示
+        import hashlib
+        current_hash = hashlib.md5(st.session_state.essay_content.encode()).hexdigest()[:8]
+        st.write(f"🔍 デバッグ: セッション内容ハッシュ {current_hash}")
+        st.write(f"🔍 デバッグ: セッション文字数 {len(st.session_state.essay_content)}文字")
+        
+        # text_areaのkeyを動的に変更（Streamlitのキャッシュ問題回避）
+        if 'text_area_key' not in st.session_state:
+            st.session_state.text_area_key = 0
+        
         modified_essay = st.text_area(
             "評価を参考に文章を修正できます",
             value=st.session_state.essay_content,
             height=300,
             help="評価コメントを参考に文章を修正し、再評価を受けることができます",
-            key="modified_essay"
+            key=f"modified_essay_{st.session_state.text_area_key}"
         )
         
         char_count_modified = len(modified_essay)
+        modified_hash = hashlib.md5(modified_essay.encode()).hexdigest()[:8]
         st.write(f"文字数: {char_count_modified}文字")
+        st.write(f"🔍 デバッグ: 修正文章ハッシュ {modified_hash}")
+        
+        # 変更検出
+        has_changed = modified_essay != st.session_state.essay_content
+        if has_changed:
+            st.info(f"🔄 文章が変更されています（{current_hash} → {modified_hash}）")
+        else:
+            st.warning("⚠️ 文章に変更がありません")
         
         # 修正・再評価ボタン
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             if st.button("🔄 修正して再評価", type="primary", disabled=char_count_modified < 100):
+                # デバッグ情報表示
+                st.write(f"🔍 更新前ハッシュ: {current_hash}")
+                st.write(f"🔍 更新後ハッシュ: {modified_hash}")
+                st.write(f"🔍 変更検出: {has_changed}")
+                
                 # 強制的にセッション状態をクリア
+                old_content = st.session_state.essay_content
                 st.session_state.essay_content = modified_essay
                 st.session_state.essay_result = None
                 
-                # キーを削除して確実にリセット
-                if 'essay_result' in st.session_state:
-                    del st.session_state['essay_result']
+                # text_areaのキーを更新（UI更新強制）
+                st.session_state.text_area_key += 1
                 
-                st.success("✅ 文章を更新しました。新しいClaude評価を開始します...")
+                # 追加のクリア処理
+                for key in ['essay_result']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                
+                # 変更確認
+                content_changed = old_content != st.session_state.essay_content
+                st.write(f"🔍 セッション更新確認: {content_changed}")
+                st.write(f"🔍 新text_areaキー: {st.session_state.text_area_key}")
+                
+                if content_changed:
+                    st.success("✅ 文章を更新しました。新しいClaude評価を開始します...")
+                else:
+                    st.error("❌ 文章の更新に失敗しました")
+                
                 time.sleep(1)  # 少し待機
                 st.rerun()
         
