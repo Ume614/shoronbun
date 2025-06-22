@@ -113,6 +113,29 @@ def get_universities():
             ]
         ),
         University(
+            id='waseda',
+            name='早稲田大学',
+            faculties=[
+                Faculty(
+                    id='sport-science',
+                    name='スポーツ科学部',
+                    has_ao=True,
+                    departments=[
+                        Department(
+                            id='sport-science',
+                            name='スポーツ科学科',
+                            has_ao=True,
+                            past_questions=[
+                                PastQuestion('waseda-sport-2023', 2023, 'スポーツが社会に果たす役割について、現代社会の課題と関連づけて論じなさい。', 90, '早稲田大学', 'スポーツ科学部', 'スポーツ科学科'),
+                                PastQuestion('waseda-sport-2022', 2022, 'デジタル技術の発展がスポーツに与える影響と可能性について述べなさい。', 90, '早稲田大学', 'スポーツ科学部', 'スポーツ科学科'),
+                                PastQuestion('waseda-sport-2021', 2021, 'コロナ禍におけるスポーツの価値と今後の在り方について論じなさい。', 90, '早稲田大学', 'スポーツ科学部', 'スポーツ科学科')
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
+        University(
             id='rikkyo',
             name='立教大学',
             faculties=[
@@ -135,6 +158,50 @@ def get_universities():
                                     faculty='スポーツウェルネス学部',
                                     department='スポーツウェルネス学科'
                                 )
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
+        University(
+            id='showa-women',
+            name='昭和女子大学',
+            faculties=[
+                Faculty(
+                    id='international',
+                    name='国際学部',
+                    has_ao=True,
+                    departments=[
+                        Department(
+                            id='international-studies',
+                            name='国際教養学科',
+                            has_ao=True,
+                            past_questions=[
+                                PastQuestion('showa-intl-2023', 2023, '国際社会における多様性の重要性について、具体例を挙げて論じなさい。', 90, '昭和女子大学', '国際学部', '国際教養学科'),
+                                PastQuestion('showa-intl-2022', 2022, 'グローバル化が教育に与える影響について述べなさい。', 90, '昭和女子大学', '国際学部', '国際教養学科')
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
+        University(
+            id='jissen-women',
+            name='実践女子大学',
+            faculties=[
+                Faculty(
+                    id='international',
+                    name='国際学部',
+                    has_ao=True,
+                    departments=[
+                        Department(
+                            id='international-studies',
+                            name='国際学科',
+                            has_ao=True,
+                            past_questions=[
+                                PastQuestion('jissen-intl-2023', 2023, '持続可能な国際協力のあり方について、あなたの考えを述べなさい。', 90, '実践女子大学', '国際学部', '国際学科'),
+                                PastQuestion('jissen-intl-2022', 2022, '文化交流が社会に与える意義について論じなさい。', 90, '実践女子大学', '国際学部', '国際学科')
                             ]
                         )
                     ]
@@ -205,15 +272,15 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
 各項目について300文字以上の具体的な評価と改善提案を含めてください。
 
 以下のJSON形式で回答してください：
-{
-  "総合得点": 数値,
-  "構成": {"得点": 数値, "評価": "詳細評価文", "改善点": "具体的改善提案"},
-  "内容": {"得点": 数値, "評価": "詳細評価文", "改善点": "具体的改善提案"},
-  "論理性": {"得点": 数値, "評価": "詳細評価文", "改善点": "具体的改善提案"},
-  "表現": {"得点": 数値, "評価": "詳細評価文", "改善点": "具体的改善提案"},
+{{
+  "総合得点": 85,
+  "構成": {{"得点": 20, "評価": "詳細評価文", "改善点": "具体的改善提案"}},
+  "内容": {{"得点": 22, "評価": "詳細評価文", "改善点": "具体的改善提案"}},
+  "論理性": {{"得点": 21, "評価": "詳細評価文", "改善点": "具体的改善提案"}},
+  "表現": {{"得点": 22, "評価": "詳細評価文", "改善点": "具体的改善提案"}},
   "総合評価": "全体的な評価コメント",
   "具体的アドバイス": ["改善提案1", "改善提案2", "改善提案3", "改善提案4", "改善提案5", "改善提案6"]
-}"""
+}}"""
 
         message = client.messages.create(
             model="claude-3-haiku-20240307",
