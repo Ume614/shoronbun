@@ -216,29 +216,62 @@ def api_generate_question(past_questions: List[PastQuestion], university: str, f
     try:
         client = get_claude_client()
         
-        past_themes = [q.theme for q in past_questions[-3:]]
-        past_themes_text = "\n".join([f"- {theme}" for theme in past_themes])
+        # 過去問データの存在確認
+        if not past_questions:
+            st.warning("⚠️ 過去問データが見つかりません。汎用的な問題を生成します。")
+            return fallback_generate_question(past_questions, university, faculty, department)
+        
+        # 過去問の詳細分析
+        past_questions_detail = []
+        for q in past_questions[-3:]:
+            past_questions_detail.append(f"【{q.year}年】{q.theme}")
+        
+        past_questions_text = "\n".join(past_questions_detail)
+        
+        st.info(f"📚 {len(past_questions)}件の過去問データを分析して問題を生成中...")
+        
+        # 過去問の特徴分析
+        keywords = []
+        for q in past_questions:
+            if 'デジタル' in q.theme or 'SNS' in q.theme or 'AI' in q.theme or 'TikTok' in q.theme or 'Twitter' in q.theme:
+                keywords.append('デジタル・テクノロジー')
+            if '社会' in q.theme or '公共' in q.theme:
+                keywords.append('社会問題')
+            if '国際' in q.theme or 'グローバル' in q.theme:
+                keywords.append('国際・グローバル')
+            if 'スポーツ' in q.theme:
+                keywords.append('スポーツ・健康')
+            if '利他' in q.theme or '多様性' in q.theme:
+                keywords.append('価値観・倫理')
+        
+        trend_keywords = list(set(keywords))
         
         prompt = f"""あなたは{university}{faculty}{department}の総合選抜型入試問題作成の専門家です。
 
-過去3年の出題傾向：
-{past_themes_text}
+【過去3年間の実際の出題】
+{past_questions_text}
 
-2026年度入試の出題予想を1問作成してください。
+【出題傾向分析】
+頻出キーワード: {', '.join(trend_keywords) if trend_keywords else '社会問題、現代課題'}
 
-【要求事項】
-1. 過去問の傾向を分析し、2026年に出題されそうなテーマを選定
-2. 現代社会の課題や最新トピックを反映
-3. {university}の特色や{faculty}の専門性を考慮
-4. 文字数制限と制限時間を明記
-5. 学生の思考力と表現力を問う内容
+【2026年度予想問題作成指示】
+上記の過去問を詳細に分析し、以下の条件で2026年度の出題を予想してください：
+
+1. 過去問の出題パターン・形式を踏襲する
+2. 過去のテーマの発展・応用版として構成
+3. 2026年の社会情勢を反映した最新性
+4. {university}{faculty}の求める人材像に適合
+5. 過去問と同様の文字数制限・時間設定
+6. 学部の専門性を活かした視点を含む
+
+【重要】過去問の傾向を必ず反映し、継続性のある出題としてください。
 
 出力形式：
-問題文のみを出力してください。"""
+問題文のみを簡潔に出力してください。"""
 
         message = client.messages.create(
             model="claude-3-haiku-20240307",
-            max_tokens=500,
+            max_tokens=800,
             messages=[{"role": "user", "content": prompt}]
         )
         
