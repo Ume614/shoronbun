@@ -514,7 +514,7 @@ def main():
             st.error("❌ API未設定")
             st.warning("⚠️ 基本機能のみ")
     
-    # ステップ1: 大学選択
+    # ステップ1: 大学選択→問題生成→入力
     if st.session_state.step == 'select':
         st.header("🎯 大学・学部・学科選択")
         
@@ -539,35 +539,32 @@ def main():
                     selected_department = next(d for d in selected_faculty.departments if d.name == selected_dept_name)
                     st.session_state.selected_department = selected_department
                     
-                    if st.button("問題生成へ進む", type="primary"):
-                        st.session_state.step = 'question'
+                    if st.button("問題生成して練習開始", type="primary"):
+                        # 問題生成
+                        with st.spinner("Claude AIが過去問を分析して問題を生成中..."):
+                            past_questions = selected_department.past_questions
+                            question = api_generate_question(
+                                past_questions,
+                                selected_university.name,
+                                selected_faculty.name,
+                                selected_department.name
+                            )
+                            st.session_state.current_question = question
+                        
+                        st.session_state.step = 'essay'
                         st.rerun()
     
-    # ステップ2: 問題生成
-    elif st.session_state.step == 'question':
-        st.header("🎲 問題生成")
-        
-        with st.spinner("Claude AIが問題を生成中..."):
-            past_questions = st.session_state.selected_department.past_questions
-            question = api_generate_question(
-                past_questions,
-                st.session_state.selected_university.name,
-                st.session_state.selected_faculty.name,
-                st.session_state.selected_department.name
-            )
-            st.session_state.current_question = question
-        
-        st.success("✅ 問題生成完了！")
-        st.markdown("### 📝 出題")
-        st.write(question)
-        
-        if st.button("小論文入力へ進む", type="primary"):
-            st.session_state.step = 'essay'
-            st.rerun()
-    
-    # ステップ3: 小論文入力
+    # ステップ2: 小論文入力
     elif st.session_state.step == 'essay':
-        st.header("✍️ 小論文入力")
+        st.header("✍️ 小論文練習")
+        
+        # 問題表示（常に表示）
+        st.markdown("### 📝 出題テーマ")
+        if st.session_state.current_question:
+            st.info(st.session_state.current_question)
+        else:
+            st.error("問題が生成されていません。最初からやり直してください。")
+            return
         
         # タイマー機能
         if 'start_time' not in st.session_state:
@@ -578,8 +575,7 @@ def main():
         # タイマーコントロール
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("### 📝 出題")
-            st.write(st.session_state.current_question)
+            st.markdown("### ✍️ 解答入力")
         
         with col2:
             if not st.session_state.timer_started:
@@ -603,8 +599,9 @@ def main():
         essay_content = st.text_area(
             "小論文を入力してください",
             value=st.session_state.essay_content,
-            height=300,
-            placeholder="ここに小論文を入力してください..."
+            height=350,
+            placeholder="ここに小論文を入力してください...",
+            key="essay_input"
         )
         st.session_state.essay_content = essay_content
         
@@ -623,6 +620,8 @@ def main():
         with col1:
             if st.button("🤖 Claude詳細評価で提出", type="primary", disabled=not can_submit):
                 st.session_state.essay_content = essay_content
+                # 評価結果をリセット（新しい評価のため）
+                st.session_state.essay_result = None
                 st.session_state.step = 'result'
                 st.rerun()
         
@@ -637,16 +636,24 @@ def main():
                 st.rerun()
         
         with col4:
-            if st.button("❌ 中断"):
-                st.session_state.step = 'select'
+            if st.button("❌ 最初から"):
+                for key in ['step', 'selected_university', 'selected_faculty', 'selected_department', 
+                           'current_question', 'essay_content', 'essay_result', 'start_time', 'timer_started']:
+                    if key in st.session_state:
+                        del st.session_state[key]
                 st.rerun()
     
-    # ステップ4: 結果表示
+    # ステップ3: 結果表示・修正・再評価
     elif st.session_state.step == 'result':
         st.header("📊 評価結果")
         
+        # 問題を常に表示
+        st.markdown("### 📝 出題テーマ")
+        st.info(st.session_state.current_question)
+        
+        # 評価実行
         if st.session_state.essay_result is None:
-            with st.spinner("Claude AIが評価中..."):
+            with st.spinner("Claude AIが厳格に評価中..."):
                 result = api_score_essay(
                     st.session_state.essay_content,
                     st.session_state.current_question,
@@ -718,22 +725,72 @@ def main():
         for i, advice in enumerate(advice_list, 1):
             st.write(f"{i}. {advice}")
         
-        # 模範解答
-        if st.button("模範解答を確認"):
-            with st.spinner("模範解答を生成中..."):
-                model_answer = api_generate_model_answer(
-                    st.session_state.current_question,
-                    st.session_state.selected_university.name,
-                    st.session_state.selected_faculty.name
-                )
-                
-                st.markdown("### 📚 模範解答")
-                st.write(model_answer)
+        # あなたの解答表示と修正機能
+        st.markdown("---")
+        st.markdown("### ✏️ あなたの解答を修正して再評価")
         
-        # リセットボタン
-        if st.button("最初からやり直す"):
+        # 現在の解答を表示・編集可能
+        st.markdown("#### 📄 現在の解答内容")
+        modified_essay = st.text_area(
+            "評価を参考に文章を修正できます",
+            value=st.session_state.essay_content,
+            height=300,
+            help="評価コメントを参考に文章を修正し、再評価を受けることができます",
+            key="modified_essay"
+        )
+        
+        char_count_modified = len(modified_essay)
+        st.write(f"文字数: {char_count_modified}文字")
+        
+        # 修正・再評価ボタン
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("🔄 修正して再評価", type="primary", disabled=char_count_modified < 100):
+                st.session_state.essay_content = modified_essay
+                st.session_state.essay_result = None  # 評価結果をリセット
+                st.success("✅ 文章を更新しました。新しい評価を開始します...")
+                st.rerun()
+        
+        with col2:
+            if st.button("📚 模範解答を確認"):
+                with st.spinner("模範解答を生成中..."):
+                    model_answer = api_generate_model_answer(
+                        st.session_state.current_question,
+                        st.session_state.selected_university.name,
+                        st.session_state.selected_faculty.name
+                    )
+                    st.session_state.model_answer = model_answer
+                
+        with col3:
+            if st.button("✍️ 入力画面に戻る"):
+                st.session_state.step = 'essay'
+                st.rerun()
+        
+        with col4:
+            if st.button("🆕 新しい問題で練習"):
+                # 同じ大学・学部で新しい問題を生成
+                st.session_state.essay_content = ""
+                st.session_state.essay_result = None
+                st.session_state.current_question = None
+                st.session_state.start_time = None
+                st.session_state.timer_started = False
+                st.session_state.step = 'select'
+                st.rerun()
+        
+        # 模範解答表示
+        if 'model_answer' in st.session_state and st.session_state.model_answer:
+            st.markdown("---")
+            st.markdown("### 📚 模範解答")
+            st.write(st.session_state.model_answer)
+            st.info("💡 模範解答は参考例です。実際の入試では自分の言葉で表現することが重要です。")
+        
+        # 完全リセットボタン
+        st.markdown("---")
+        if st.button("🏠 最初からやり直す", help="全てリセットして大学選択から始める"):
             for key in ['step', 'selected_university', 'selected_faculty', 'selected_department', 
-                       'current_question', 'essay_content', 'essay_result']:
+                       'current_question', 'essay_content', 'essay_result', 'model_answer',
+                       'start_time', 'timer_started']:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
