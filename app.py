@@ -367,8 +367,36 @@ def main():
     elif st.session_state.step == 'essay':
         st.header("✍️ 小論文入力")
         
-        st.markdown("### 📝 出題")
-        st.write(st.session_state.current_question)
+        # タイマー機能
+        if 'start_time' not in st.session_state:
+            st.session_state.start_time = None
+        if 'timer_started' not in st.session_state:
+            st.session_state.timer_started = False
+        
+        # タイマーコントロール
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("### 📝 出題")
+            st.write(st.session_state.current_question)
+        
+        with col2:
+            if not st.session_state.timer_started:
+                if st.button("⏰ タイマー開始", type="secondary"):
+                    st.session_state.start_time = time.time()
+                    st.session_state.timer_started = True
+                    st.rerun()
+            else:
+                if st.session_state.start_time:
+                    elapsed = time.time() - st.session_state.start_time
+                    remaining = max(0, 90*60 - elapsed)  # 90分
+                    mins = int(remaining // 60)
+                    secs = int(remaining % 60)
+                    
+                    if remaining > 0:
+                        st.metric("⏰ 残り時間", f"{mins:02d}:{secs:02d}")
+                    else:
+                        st.error("⏰ 時間終了！")
+                        st.markdown("制限時間が終了しました。提出してください。")
         
         essay_content = st.text_area(
             "小論文を入力してください",
@@ -381,9 +409,34 @@ def main():
         char_count = len(essay_content)
         st.write(f"文字数: {char_count}文字")
         
-        if char_count > 0:
-            if st.button("評価開始", type="primary"):
+        # 提出バリデーション
+        min_chars = 100
+        can_submit = char_count >= min_chars
+        
+        if not can_submit:
+            st.warning(f"⚠️ 提出には最低{min_chars}文字必要です（現在: {char_count}文字）")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("🤖 Claude詳細評価で提出", type="primary", disabled=not can_submit):
+                st.session_state.essay_content = essay_content
                 st.session_state.step = 'result'
+                st.rerun()
+        
+        with col2:
+            if st.button("💾 下書き保存"):
+                st.session_state.essay_content = essay_content
+                st.success("✅ 下書きを保存しました")
+        
+        with col3:
+            if st.button("🔄 リセット"):
+                st.session_state.essay_content = ""
+                st.rerun()
+        
+        with col4:
+            if st.button("❌ 中断"):
+                st.session_state.step = 'select'
                 st.rerun()
     
     # ステップ4: 結果表示
