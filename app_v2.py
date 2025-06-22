@@ -20,14 +20,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# Claude API 設定
-@st.cache_resource
+# Claude API 設定（キャッシュなし）
 def get_claude_client():
-    """Claude クライアントを取得"""
+    """Claude クライアントを取得（評価の度に新しいクライアント）"""
     api_key = os.getenv("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_API_KEY")
     if not api_key:
         st.error("⚠️ Claude API キーが設定されていません。環境変数 ANTHROPIC_API_KEY を設定してください。")
         st.stop()
+    # 毎回新しいクライアントを作成（キャッシュ回避）
     return anthropic.Anthropic(api_key=api_key)
 
 # データクラス定義
@@ -253,11 +253,21 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
     try:
         client = get_claude_client()
         
-        # デバッグ情報
-        st.write(f"🔍 デバッグ: 評価対象文字数 {len(content)}文字")
-        st.write(f"🔍 デバッグ: {university}{faculty}の評価基準で採点")
+        # デバッグ情報（文章のハッシュ値も表示）
+        import hashlib
+        content_hash = hashlib.md5(content.encode()).hexdigest()[:8]
+        current_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         
-        prompt = f"""あなたは{university}{faculty}の厳格な入試評価委員です。以下の小論文を大学入試レベルの厳しい基準で詳細評価してください。
+        st.write(f"🔍 デバッグ: 評価対象文字数 {len(content)}文字")
+        st.write(f"🔍 デバッグ: 文章ハッシュ {content_hash}")
+        st.write(f"🔍 デバッグ: {university}{faculty}の評価基準で採点")
+        st.write(f"🔍 デバッグ: API呼び出し時刻 {current_time}")
+        
+        # プロンプトに一意性を追加（キャッシュ回避）
+        prompt = f"""【評価ID: {content_hash}-{current_time}】
+あなたは{university}{faculty}の厳格な入試評価委員です。以下の小論文を大学入試レベルの厳しい基準で詳細評価してください。
+
+重要: この評価は一意のID [{content_hash}-{current_time}] で識別される新しい評価です。過去の評価とは独立して採点してください。
 
 【出題テーマ】
 {theme}
@@ -303,13 +313,28 @@ def api_score_essay(content: str, theme: str, university: str, faculty: str) -> 
         
         response_text = message.content[0].text.strip()
         
+        # デバッグ: Claudeのレスポンスを表示
+        st.write(f"🔍 デバッグ: Claude応答長 {len(response_text)}文字")
+        
+        with st.expander("🔍 Claude生レスポンス確認"):
+            st.text(response_text[:1000] + "..." if len(response_text) > 1000 else response_text)
+        
         # JSON部分を抽出
         json_start = response_text.find('{')
         json_end = response_text.rfind('}') + 1
         
         if json_start != -1 and json_end != -1:
             json_text = response_text[json_start:json_end]
-            return json.loads(json_text)
+            
+            # JSONパース前にも確認
+            st.write(f"🔍 デバッグ: JSON抽出成功 {len(json_text)}文字")
+            
+            parsed_result = json.loads(json_text)
+            
+            # パース結果の確認
+            st.write(f"🔍 デバッグ: JSON解析成功 総合得点={parsed_result.get('総合得点', 'なし')}")
+            
+            return parsed_result
         else:
             raise ValueError("JSON形式の応答が見つかりません")
             
