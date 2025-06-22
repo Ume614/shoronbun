@@ -808,7 +808,7 @@ def main():
         st.markdown("---")
         st.markdown("### ✏️ あなたの解答を修正して再評価")
         
-        # 現在の解答を表示・編集可能
+        # 現在の解答を表示
         st.markdown("#### 📄 現在の解答内容")
         
         # デバッグ: 現在のセッション状態を表示
@@ -817,27 +817,42 @@ def main():
         st.write(f"🔍 デバッグ: セッション内容ハッシュ {current_hash}")
         st.write(f"🔍 デバッグ: セッション文字数 {len(st.session_state.essay_content)}文字")
         
-        # text_areaのkeyを動的に変更（Streamlitのキャッシュ問題回避）
-        if 'text_area_key' not in st.session_state:
-            st.session_state.text_area_key = 0
-        
-        modified_essay = st.text_area(
-            "評価を参考に文章を修正できます",
+        # 現在の文章を読み取り専用で表示
+        st.text_area(
+            "現在の解答（読み取り専用）",
             value=st.session_state.essay_content,
-            height=300,
-            help="評価コメントを参考に文章を修正し、再評価を受けることができます",
-            key=f"modified_essay_{st.session_state.text_area_key}"
+            height=200,
+            disabled=True,
+            key="current_essay_display"
         )
         
-        char_count_modified = len(modified_essay)
-        modified_hash = hashlib.md5(modified_essay.encode()).hexdigest()[:8]
-        st.write(f"文字数: {char_count_modified}文字")
-        st.write(f"🔍 デバッグ: 修正文章ハッシュ {modified_hash}")
+        # 新しい文章入力フィールド
+        st.markdown("#### ✏️ 修正版を入力してください")
+        
+        # セッション状態に新しい文章用のキーを作成
+        if 'new_essay_content' not in st.session_state:
+            st.session_state.new_essay_content = st.session_state.essay_content
+        
+        new_essay = st.text_area(
+            "修正した文章を入力",
+            value=st.session_state.new_essay_content,
+            height=300,
+            help="評価コメントを参考に文章を修正してください",
+            key="new_essay_input"
+        )
+        
+        # リアルタイムで新しい文章を更新
+        st.session_state.new_essay_content = new_essay
+        
+        char_count_new = len(new_essay)
+        new_hash = hashlib.md5(new_essay.encode()).hexdigest()[:8]
+        st.write(f"文字数: {char_count_new}文字")
+        st.write(f"🔍 デバッグ: 新文章ハッシュ {new_hash}")
         
         # 変更検出
-        has_changed = modified_essay != st.session_state.essay_content
+        has_changed = new_essay != st.session_state.essay_content
         if has_changed:
-            st.info(f"🔄 文章が変更されています（{current_hash} → {modified_hash}）")
+            st.info(f"🔄 文章が変更されています（{current_hash} → {new_hash}）")
         else:
             st.warning("⚠️ 文章に変更がありません")
         
@@ -845,19 +860,15 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            if st.button("🔄 修正して再評価", type="primary", disabled=char_count_modified < 100):
+            if st.button("🔄 修正版で再評価", type="primary", disabled=char_count_new < 100 or not has_changed):
                 # デバッグ情報表示
-                st.write(f"🔍 更新前ハッシュ: {current_hash}")
-                st.write(f"🔍 更新後ハッシュ: {modified_hash}")
+                st.write(f"🔍 元文章ハッシュ: {current_hash}")
+                st.write(f"🔍 新文章ハッシュ: {new_hash}")
                 st.write(f"🔍 変更検出: {has_changed}")
                 
-                # 強制的にセッション状態をクリア
-                old_content = st.session_state.essay_content
-                st.session_state.essay_content = modified_essay
+                # セッション状態を確実に更新
+                st.session_state.essay_content = new_essay
                 st.session_state.essay_result = None
-                
-                # text_areaのキーを更新（UI更新強制）
-                st.session_state.text_area_key += 1
                 
                 # 追加のクリア処理
                 for key in ['essay_result']:
@@ -865,16 +876,12 @@ def main():
                         del st.session_state[key]
                 
                 # 変更確認
-                content_changed = old_content != st.session_state.essay_content
-                st.write(f"🔍 セッション更新確認: {content_changed}")
-                st.write(f"🔍 新text_areaキー: {st.session_state.text_area_key}")
+                updated_hash = hashlib.md5(st.session_state.essay_content.encode()).hexdigest()[:8]
+                st.write(f"🔍 更新後セッションハッシュ: {updated_hash}")
+                st.write(f"🔍 ハッシュ更新成功: {updated_hash == new_hash}")
                 
-                if content_changed:
-                    st.success("✅ 文章を更新しました。新しいClaude評価を開始します...")
-                else:
-                    st.error("❌ 文章の更新に失敗しました")
-                
-                time.sleep(1)  # 少し待機
+                st.success("✅ 新しい文章で評価を開始します...")
+                time.sleep(1)
                 st.rerun()
         
         with col2:
